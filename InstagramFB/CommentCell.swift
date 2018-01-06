@@ -38,7 +38,6 @@ class CommentCell: UICollectionViewCell {
         iv.clipsToBounds = true
         iv.layer.cornerRadius = 40/2
         iv.contentMode = .scaleAspectFill
-        iv.backgroundColor = .purple
         return iv
     }()
     

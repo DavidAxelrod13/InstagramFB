@@ -69,62 +69,12 @@ class CommentsController: UICollectionViewController, UICollectionViewDelegateFl
         tabBarController?.tabBar.isHidden = false 
     }
     
-    lazy var containerView: UIView = {
-        let containerView = UIView()
-        containerView.backgroundColor = .white
-        containerView.frame = CGRect(x: 0, y: 0, width: 100, height: 50)
-        
-        let submitButton = UIButton(type: .system)
-        submitButton.setTitle("Submit", for: .normal)
-        submitButton.setTitleColor(.black, for: .normal)
-        submitButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 14)
-        submitButton.addTarget(self, action: #selector(handleSubmit), for: .touchUpInside)
-        containerView.addSubview(submitButton)
-        submitButton.anchor(top: containerView.topAnchor, left: nil, bottom: containerView.bottomAnchor, right: containerView.rightAnchor, paddingTop: 0, paddingLeft: 0, paddingBottom: 0, paddingRight: 12, width: 50, height: 0)
-        
-        containerView.addSubview(self.commentTextField)
-        self.commentTextField.anchor(top: containerView.topAnchor, left: containerView.leftAnchor, bottom: containerView.bottomAnchor, right: submitButton.leftAnchor, paddingTop: 0, paddingLeft: 12, paddingBottom: 0, paddingRight: 0, width: 0, height: 0)
-        
-        containerView.addSubview(self.dividerLineView)
-        self.dividerLineView.anchor(top: containerView.topAnchor, left: containerView.leftAnchor, bottom: nil, right: containerView.rightAnchor, paddingTop: 0, paddingLeft: 0, paddingBottom: 0, paddingRight: 0, width: 0, height: 0.8)
-        
-        return containerView
+    lazy var commentContainerView: CommentInputAccessoryView = {
+        let frame = CGRect(x: 0, y: 0, width: view.frame.width, height: 50)
+        let commentInputAccessoryView = CommentInputAccessoryView(frame: frame)
+        commentInputAccessoryView.delegate = self
+        return commentInputAccessoryView
     }()
-    
-    let commentTextField: UITextField = {
-        let tf = UITextField()
-        tf.placeholder = "Enter Comment"
-        return tf
-    }()
-    
-    let dividerLineView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor.rgb(red: 230, green: 230, blue: 230)
-        return view
-    }()
-    
-    @objc func handleSubmit() {
-        
-        guard let commentorUid = Auth.auth().currentUser?.uid else { return }
-        guard let commentText = commentTextField.text, commentText.count > 0 else { return }
-        guard let postId = self.post?.id else { return }
-        
-        let ref = Database.database().reference().child("comments").child(postId).childByAutoId()
-        let values = ["commentText": commentText, "commentCreationDate": Date().timeIntervalSince1970, "commentorUid" : commentorUid] as [String : Any]
-        
-    
-        ref.updateChildValues(values) { (error: Error?, ref) in
-            
-            if let error = error {
-                print("Error saving comment to FB DB: ", error.localizedDescription)
-                return
-            }
-            
-            print("Success saving comment to FB DB")
-            
-        }
-        
-    }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
@@ -161,11 +111,33 @@ class CommentsController: UICollectionViewController, UICollectionViewDelegateFl
     
     override var inputAccessoryView: UIView? {
         get {
-            return containerView
+            return commentContainerView
         }
     }
     
     override var canBecomeFirstResponder: Bool {
         return true
+    }
+}
+
+extension CommentsController: CommentInputAccessoryViewDelegate {
+    
+    func didSubmit(forComment comment: String) {
+        guard let commentorUid = Auth.auth().currentUser?.uid else { return }
+        if comment.isEmpty { return } 
+        guard let postId = self.post?.id else { return }
+        
+        let ref = Database.database().reference().child("comments").child(postId).childByAutoId()
+        let values = ["commentText": comment, "commentCreationDate": Date().timeIntervalSince1970, "commentorUid" : commentorUid] as [String : Any]
+        
+        ref.updateChildValues(values) { (error: Error?, ref) in
+            if let error = error {
+                print("Error saving comment to FB DB: ", error.localizedDescription)
+                return
+            }
+            print("Success saving comment to FB DB")
+            
+            self.commentContainerView.clearComment()
+        }
     }
 }
